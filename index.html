@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Trading-Desk</title>
+<style>
+:root{--bg:#0b0f17;--pn:#121a27;--ln:#223048;--tx:#dfe7f3;--mu:#8493ab;--up:#22c58b;--dn:#ff5d6c;--am:#f5a524;--bl:#5b8cff;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--bl)}h3{margin:0 0 8px;font-size:15px}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln);background:var(--pn)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:12px;padding:12px}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.pn{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:12px;min-width:0}
+input,select,button{font:inherit;color:var(--tx);background:#0d1420;border:1px solid var(--ln);border-radius:7px;padding:7px 9px}
+button{cursor:pointer;background:#1a2638}button.pri{background:var(--bl);border-color:var(--bl);color:#fff}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.tabs button{white-space:nowrap}.tabs button.on{background:var(--bl);border-color:var(--bl);color:#fff}
+.tp{display:none}.tp.on{display:block}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:10px}
+label{display:block;font-size:12px;color:var(--mu)}label input,label select{width:100%;margin-top:3px}
+table{width:100%;border-collapse:collapse}td,th{padding:6px 8px;border-bottom:1px solid var(--ln);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--mu);font-weight:500}
+.up{color:var(--up)}.dn{color:var(--dn)}.mu{color:var(--mu)}
+.wr{display:grid;grid-template-columns:1fr auto auto auto 14px;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--ln);cursor:pointer}
+.bd{font-size:11px;padding:1px 6px;border-radius:9px;border:1px solid var(--ln)}.bd.up{border-color:var(--up)}.bd.dn{border-color:var(--dn)}
+pre{white-space:pre-wrap;word-break:break-word;background:#0d1420;border:1px solid var(--ln);border-radius:8px;padding:10px;margin:8px 0 0;max-height:420px;overflow:auto}
+#ch,#pay{width:100%;height:auto;display:block}#ch text,#pay text{fill:var(--mu);font-size:11px}.gl{stroke:var(--ln)}
+#bn{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:var(--am);color:#111;padding:10px 16px;border-radius:9px;display:none;z-index:9;font-weight:600}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.bar input[type=range]{flex:1;min-width:120px;padding:0}
+.sig{font-size:22px;font-weight:700}.disc{color:var(--mu);font-size:12px;padding:0 14px 20px}
+</style></head><body>
+<div id="bn"></div>
+<header class="top"><b>Trading-Desk</b>
+<input id="sym" value="AAPL" size="9" aria-label="Symbol"><select id="iv"><option>5m</option><option>15m</option><option>1d</option></select>
+<select id="orm"><option value="5">ORB 5 Min</option><option value="15" selected>ORB 15 Min</option><option value="30">ORB 30 Min</option></select>
+<select id="day"></select><button class="pri" id="go">Laden</button><span id="hd" class="mu"></span></header>
+<div class="main"><section>
+<div class="pn"><svg id="ch" viewBox="0 0 900 400"></svg>
+<div class="bar"><button id="pl">▶ Replay</button><input id="sl" type="range" min="1" value="1"><select id="sp"><option value="600">langsam</option><option value="250" selected>normal</option><option value="80">schnell</option></select><span id="rs" class="mu"></span></div></div>
+<div class="pn"><nav class="tabs" id="tabs"></nav>
+
+<div class="tp on" id="p-ai"><div class="bar"><button class="pri" data-ai="signal">Signal (JSON)</button><button data-ai="why">Warum bewegt sie sich?</button><button data-ai="fund">Fundamental-Snapshot</button><button data-ai="scen">4 Szenarien</button></div><div id="aiv"></div><pre id="aiout">Wähle oben einen Befehl. Die KI sucht im Web und antwortet für das Symbol im Chart.</pre></div>
+
+<div class="tp" id="p-plan"><div class="g">
+<label>Richtung<select id="de"><option value="long">Long</option><option value="short">Short</option></select></label>
+<label>Entry<input id="en" type="number" step="any"></label><label>Stopp<input id="st" type="number" step="any"></label>
+<label>Ziel 1<input id="t1" type="number" step="any"></label><label>Ziel 2<input id="t2" type="number" step="any"></label><label>Ziel 3<input id="t3" type="number" step="any"></label></div>
+<button id="fo">Aus ORB übernehmen</button><p class="mu">Entry und Exit werden bei einem ORB-Ausbruch automatisch gesetzt (Ziele = 1, 2, 3 × Breite der Opening Range). Alle Felder sind frei änderbar.</p><div id="planout"></div></div>
+
+<div class="tp" id="p-sc"><div class="g"><label>% Stopp<input id="pr0" type="number" value="40"></label><label>% Ziel 1<input id="pr1" type="number" value="25"></label><label>% Ziel 2<input id="pr2" type="number" value="20"></label><label>% Ziel 3<input id="pr3" type="number" value="15"></label></div>
+<p class="mu">Wahrscheinlichkeiten sind deine Annahme (Summe 100).</p><div id="sctab"></div><svg id="pay" viewBox="0 0 520 220"></svg></div>
+
+<div class="tp" id="p-rk"><div class="g"><label>Budget<input id="bu" type="number" value="10000"></label><label>Risiko pro Trade in %<input id="rp" type="number" step="any" value="1"></label><label>Max. Tagesverlust in %<input id="md" type="number" step="any" value="3"></label></div><div id="rkout"></div></div>
+
+<div class="tp" id="p-tm"><p class="mu">Time Machine: Wähle oben einen früheren Tag und spiele ihn unter dem Chart Kerze für Kerze ab. Der ORB-Trade entsteht dabei live. Darunter siehst du den ORB-Backtest über alle geladenen Tage (Einstieg am ORB-Level, Ausstieg bei Stopp, 2R-Ziel oder Handelsschluss; berühren beide Level eine Kerze, zählt der Stopp).</p><button id="bt">ORB-Backtest starten</button><div id="btout"></div></div>
+
+<div class="tp" id="p-nw"><div id="nw" class="mu">Lädt …</div></div>
+
+<div class="tp" id="p-al"><div class="g"><label>Symbol<input id="as" size="8"></label><label>Bedingung<select id="ad"><option value="up">Kurs ≥</option><option value="dn">Kurs ≤</option></select></label><label>Preis<input id="ap" type="number" step="any"></label></div><button id="aa">Alarm hinzufügen</button><p class="mu">Alarme werden jede Minute geprüft, solange diese Seite offen ist.</p><div id="al"></div></div>
+
+<div class="tp" id="p-br"><div class="g"><label>Gebühr pro Order (fest)<input id="fx" type="number" step="any" value="1"></label><label>Gebühr in % vom Wert<input id="fp" type="number" step="any" value="0"></label></div><button id="po">Papier-Order mit aktuellem Plan</button><p class="mu">Die Gebühren fließen in Plan, Szenarien und Risiko ein. Echte Orders an einen Broker (z. B. Alpaca oder Interactive Brokers) brauchen deren API-Schlüssel und sind hier nicht enthalten. Papier-Orders sind nur Übung.</p><div id="ord"></div></div>
+
+<div class="tp" id="p-cg"><button class="pri" id="cgb">Congress-Trades abfragen</button> <a href="https://www.capitoltrades.com/trades" target="_blank" rel="noopener">Capitol Trades</a><div id="cg"></div></div>
+</div></section>
+<aside><div class="pn"><h3>Scanner</h3><div class="bar" style="margin:0 0 8px"><input id="ns" placeholder="Symbol hinzufügen" size="12"><button id="na">+</button></div><div id="wl" class="mu">Lädt …</div><p class="mu" style="font-size:12px">ORB ↑ / ↓: Kurs liegt über / unter der Opening Range von heute. Klick lädt den Chart.</p></div></aside></div>
+<p class="disc">Keine Anlageberatung. Kursdaten ca. 15 Minuten verzögert. Rechenbeispiele und KI-Einschätzungen können falsch sein; handle nur mit Geld, dessen Verlust du verkraften kannst.</p>
+<script>
+(function(){
+const $=id=>document.getElementById(id),V=id=>parseFloat($(id).value),
+f=(v,d=2)=>isFinite(v)?v.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}):"–",
+E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])),
+J=u=>fetch(u).then(r=>r.json()),
+L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}},
+Sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+OKS=/^[A-Za-z0-9.^=\-]{1,12}$/;
+const S={rows:[],all:[],tz:"UTC",cur:"$",sym:"AAPL",iv:"5m",upto:0,timer:0,auto:true,sh:0,sc:[]};
+let WL=L("wl",["AAPL","MSFT","NVDA","GOOGL","AMZN","TSLA","SAP.DE","SIE.DE","ALV.DE","KO","BTC-USD","EURUSD=X"]),AL=L("al",[]),OR=L("or",[]);
+const TABS=[["ai","Analyst"],["plan","Plan"],["sc","Szenarien"],["rk","Risiko &amp; Budget"],["tm","Time Machine"],["nw","News"],["al","Alarme"],["br","Broker"],["cg","Congress"]];
+$("tabs").innerHTML=TABS.map((t,i)=>`<button data-t="${t[0]}" class="${i?"":"on"}">${t[1]}</button>`).join("");
+$("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));document.querySelectorAll(".tp").forEach(p=>p.classList.toggle("on",p.id==="p-"+t))};
+const dk=t=>new Date(t*1000).toLocaleDateString("sv-SE",{timeZone:S.tz}),
+tm=t=>new Date(t*1000).toLocaleTimeString("de-DE",{timeZone:S.tz,hour:"2-digit",minute:"2-digit"}),
+pv=()=>({d:$("de").value,e:V("en"),s:V("st"),t:[V("t1"),V("t2"),V("t3")]});
+function orb(rows){const m=+$("orm").value,bm=S.iv==="15m"?15:5,n=Math.max(1,Math.round(m/bm));
+ if(S.iv==="1d"||rows.length<n)return null;
+ const hi=Math.max(...rows.slice(0,n).map(r=>r.h)),lo=Math.min(...rows.slice(0,n).map(r=>r.l)),o={n,hi,lo,R:hi-lo,sig:null};
+ for(let i=n;i<rows.length;i++){const c=rows[i].c;
+  if(c>hi){o.sig={i,dir:"long",entry:hi,stop:lo};break}
+  if(c<lo){o.sig={i,dir:"short",entry:lo,stop:hi};break}}
+ return o}
+function sim(rows,o){const s=o&&o.sig;if(!s||!(o.R>0))return null;const sg=s.dir==="long"?1:-1,R=o.R;
+ for(let i=s.i+1;i<rows.length;i++){const r=rows[i];
+  if(sg>0?r.l<=s.stop:r.h>=s.stop)return -1;
+  if(sg>0?r.h>=s.entry+2*R:r.l<=s.entry-2*R)return 2}
+ return +((rows[rows.length-1].c-s.entry)*sg/R).toFixed(2)}
+function fill(o){const s=o.sig||{dir:"long",entry:o.hi,stop:o.lo},sg=s.dir==="long"?1:-1;
+ $("de").value=s.dir;$("en").value=s.entry.toFixed(2);$("st").value=s.stop.toFixed(2);
+ [1,2,3].forEach(k=>$("t"+k).value=(s.entry+sg*o.R*k).toFixed(2));calc()}
+function draw(){const rows=S.rows.slice(0,S.upto),svg=$("ch");
+ if(!rows.length){svg.innerHTML="";return}
+ const o=orb(rows);if(S.auto&&o&&o.sig)fill(o);
+ const p=pv(),W=900,H=400,Lf=8,Rt=70,T=10,B=22,pw=W-Lf-Rt,ph=H-T-B,N=S.rows.length,bw=pw/N;
+ let lo=Math.min(...S.rows.map(r=>r.l)),hi=Math.max(...S.rows.map(r=>r.h));
+ [p.e,p.s,p.t[2]].forEach(v=>{if(isFinite(v)){lo=Math.min(lo,v);hi=Math.max(hi,v)}});
+ const pd=(hi-lo)*.05||1;lo-=pd;hi+=pd;
+ const Y=v=>T+ph*(hi-v)/(hi-lo),X=i=>Lf+bw*(i+.5);let g="";
+ for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;g+=`<line class="gl" x1="${Lf}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${W-Rt+4}" y="${Y(v)+4}">${f(v)}</text>`}
+ for(let k=0;k<6;k++){const i=Math.min(N-1,Math.floor(N*k/6));g+=`<text x="${X(i)}" y="${H-6}" text-anchor="middle">${S.iv==="1d"?dk(S.rows[i].t).slice(5):tm(S.rows[i].t)}</text>`}
+ if(o)g+=`<rect x="${X(0)-bw/2}" y="${Y(o.hi)}" width="${pw}" height="${Math.max(1,Y(o.lo)-Y(o.hi))}" fill="var(--am)" opacity=".13"/><text x="${W-Rt+4}" y="${Y(o.hi)-3}" style="fill:var(--am)">ORB</text>`;
+ rows.forEach((r,i)=>{const c=r.c>=r.o?"var(--up)":"var(--dn)";
+  g+=`<line x1="${X(i)}" x2="${X(i)}" y1="${Y(r.h)}" y2="${Y(r.l)}" stroke="${c}"/><rect x="${X(i)-bw*.35}" y="${Y(Math.max(r.o,r.c))}" width="${bw*.7}" height="${Math.max(1,Math.abs(Y(r.o)-Y(r.c)))}" fill="${c}"/>`});
+ [[9,"#5b8cff"],[21,"#b07cff"]].forEach(([q,c])=>{let e=rows[0].c,d="";const k=2/(q+1);rows.forEach((r,i)=>{e=r.c*k+e*(1-k);d+=(i?"L":"M")+X(i)+" "+Y(e)});g+=`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.3"/>`});
+ if(o&&o.sig)g+=`<text x="${X(o.sig.i)}" y="${o.sig.dir==="long"?Y(rows[o.sig.i].l)+14:Y(rows[o.sig.i].h)-8}" text-anchor="middle" style="fill:var(--am);font-weight:700">${o.sig.dir==="long"?"Long":"Short"}</text>`;
+ [[p.e,"Entry","#5b8cff"],[p.s,"Stopp","var(--dn)"],[p.t[0],"Z1","var(--up)"],[p.t[1],"Z2","var(--up)"],[p.t[2],"Z3","var(--up)"]].forEach(([v,n,c])=>{if(isFinite(v))g+=`<line x1="${Lf}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="${c}" stroke-dasharray="5 4"/><text x="${W-Rt+4}" y="${Y(v)+4}" style="fill:${c}">${n} ${f(v)}</text>`});
+ svg.innerHTML=g;
+ let st=S.upto+" / "+N+" Kerzen";if(o&&o.sig){const s=o.sig,sg=s.dir==="long"?1:-1,r=(rows[rows.length-1].c-s.entry)*sg/o.R;st+=" · ORB "+(sg>0?"Long":"Short")+" seit "+tm(rows[s.i].t)+": "+(r>=0?"+":"")+f(r)+" R"}
+ $("rs").textContent=st}
+function calc(){const p=pv(),bu=V("bu"),rp=V("rp"),fx=V("fx")||0,fp=(V("fp")||0)/100,sg=p.d==="long"?1:-1,ps=Math.abs(p.e-p.s),cs=S.cur;
+ if(!(p.e>0&&p.s>0&&ps>0&&bu>0&&rp>0)){$("planout").innerHTML=$("rkout").innerHTML="<p class=mu>Bitte Entry, Stopp, Budget und Risiko ausfüllen (oder Plan aus ORB übernehmen).</p>";$("sctab").innerHTML=$("pay").innerHTML="";S.sh=0;return}
+ const rE=bu*rp/100,sh=Math.max(0,Math.min(Math.floor(rE/ps),Math.floor(bu/p.e))),pnl=x=>(x-p.e)*sg*sh-2*fx-fp*sh*(p.e+x);S.sh=sh;
+ const lv=[["Stopp",p.s,V("pr0")||0],["Ziel 1",p.t[0],V("pr1")||0],["Ziel 2",p.t[1],V("pr2")||0],["Ziel 3",p.t[2],V("pr3")||0]].filter(x=>isFinite(x[1])),
+ ev=lv.reduce((a,x)=>a+x[2]/100*pnl(x[1]),0),ps100=lv.reduce((a,x)=>a+x[2],0),val=sh*p.e,rs=-pnl(p.s),be=p.e+sg*(2*fx/(sh||1)+2*fp*p.e);
+ $("planout").innerHTML=`<table><tr><td>Einstieg</td><td>${p.d==="long"?"Long über":"Short unter"} ${f(p.e)} ${cs}</td></tr><tr><td>Stopp</td><td>${f(p.s)} ${cs} (Abstand ${f(ps)})</td></tr>`+lv.slice(1).map(x=>`<tr><td>${x[0]}</td><td>${f(x[1])} ${cs} · Chance/Risiko ${f(Math.abs(x[1]-p.e)/ps,1)} : 1</td></tr>`).join("")+`<tr><td>Break-even (ca.)</td><td>${f(be)} ${cs}</td></tr></table>`;
+ $("sctab").innerHTML=`<table><tr><th>Ausgang</th><th>Kurs</th><th>Ergebnis</th><th>in R</th><th>Chance</th></tr>`+lv.map(x=>{const r=pnl(x[1]);return`<tr><td>${x[0]}</td><td>${f(x[1])}</td><td class="${r>=0?"up":"dn"}">${f(r)} ${cs}</td><td>${f((x[1]-p.e)*sg/ps,1)} R</td><td>${x[2]} %</td></tr>`}).join("")+`<tr><td><b>Erwartungswert</b></td><td></td><td class="${ev>=0?"up":"dn"}"><b>${f(ev)} ${cs}</b></td><td>${f(ev/(rs||1),2)} R</td><td class="${ps100===100?"mu":"dn"}">${ps100} %</td></tr></table>`;
+ const xs=lv.map(x=>x[1]).concat(p.e),x0=Math.min(...xs)-ps*.5,x1=Math.max(...xs)+ps*.5,pts=[];
+ for(let i=0;i<=40;i++){const x=x0+(x1-x0)*i/40,pr=(sg>0&&x<p.s)||(sg<0&&x>p.s)?pnl(p.s):pnl(x);pts.push([x,pnl(x),pr])}
+ const ys=pts.flatMap(q=>[q[1],q[2]]),y0=Math.min(...ys),y1=Math.max(...ys),X=x=>40+460*(x-x0)/(x1-x0),Y=y=>10+190*(y1-y)/((y1-y0)||1);
+ const ln=k=>pts.map((q,i)=>(i?"L":"M")+X(q[0]).toFixed(1)+" "+Y(q[k]).toFixed(1)).join("");
+ $("pay").innerHTML=`<line class="gl" x1="40" x2="500" y1="${Y(0)}" y2="${Y(0)}"/><path d="${ln(1)}" fill="none" stroke="var(--mu)" stroke-dasharray="4 3"/><path d="${ln(2)}" fill="none" stroke="var(--bl)" stroke-width="2.5"/>`+lv.map(x=>`<line class="gl" x1="${X(x[1])}" x2="${X(x[1])}" y1="10" y2="200"/><text x="${X(x[1])}" y="215" text-anchor="middle">${x[0]}</text>`).join("")+`<text x="44" y="22">${f(y1,0)} ${cs}</text><text x="44" y="196">${f(y0,0)} ${cs}</text><text x="260" y="10" text-anchor="middle">Gewinn/Verlust je Ausstiegskurs (blau: mit Stopp, gestrichelt: ohne)</text>`;
+ const pc=val/bu*100,warn=[];if(rp>2)warn.push("Risiko über 2 % pro Trade gilt als aggressiv.");if(sh<Math.floor(rE/ps))warn.push("Das Budget begrenzt die Stückzahl: das Risiko liegt unter deinem Wunsch.");if(sh===0)warn.push("Mit diesem Budget ist keine volle Aktie möglich.");
+ $("rkout").innerHTML=`<table><tr><td>Risikobetrag</td><td>${f(rE)} ${cs}</td></tr><tr><td>Stückzahl</td><td>${sh}</td></tr><tr><td>Positionswert</td><td>${f(val)} ${cs} (${f(pc,1)} % vom Budget)</td></tr><tr><td>Verlust bei Stopp inkl. Gebühren</td><td class="dn">${f(rs)} ${cs}</td></tr><tr><td>Tagesverlust-Grenze</td><td>${f(bu*(V("md")||0)/100)} ${cs} = ${Math.floor((V("md")||0)/rp)} Stopp-Verluste</td></tr></table>`+warn.map(w=>`<p class="dn">${w}</p>`).join("")}
+function pick(){S.rows=S.iv==="1d"?S.all:S.all.filter(r=>dk(r.t)===$("day").value);S.upto=S.rows.length;$("sl").max=S.rows.length||1;$("sl").value=S.upto;stop();
+ if(S.auto)["en","st","t1","t2","t3"].forEach(i=>$(i).value="");draw();calc()}
+async function load(){const sym=$("sym").value.trim().toUpperCase(),iv=$("iv").value;if(!OKS.test(sym))return;$("hd").textContent="lädt …";
+ try{const d=await J("/api/candles?s="+encodeURIComponent(sym)+"&i="+iv);if(d.error||!d.rows.length)throw 0;
+  S.sym=sym;S.iv=iv;S.tz=d.tz;S.cur=d.currency==="EUR"?"€":d.currency==="USD"?"$":d.currency+" ";S.all=d.rows;
+  const days=[...new Set(d.rows.map(r=>dk(r.t)))];$("day").innerHTML=iv==="1d"?"<option>alle</option>":days.map(x=>`<option>${x}</option>`).join("");
+  if(iv!=="1d")$("day").value=days[days.length-1];S.auto=true;pick();$("hd").textContent=sym+" · "+d.currency;$("as").value=$("as").value||sym;news()}
+ catch(e){$("hd").textContent="Keine Daten für "+sym}}
+function stop(){clearInterval(S.timer);S.timer=0;$("pl").textContent="▶ Replay"}
+$("pl").onclick=()=>{if(S.timer)return stop();if(S.upto>=S.rows.length)S.upto=Math.min(3,S.rows.length);$("pl").textContent="⏸ Pause";
+ S.timer=setInterval(()=>{if(S.upto>=S.rows.length)return stop();S.upto++;$("sl").value=S.upto;draw()},+$("sp").value)};
+$("sl").oninput=()=>{stop();S.upto=+$("sl").value;draw()};
+$("go").onclick=load;$("sym").onkeydown=e=>{if(e.key==="Enter")load()};$("day").onchange=()=>{S.auto=true;pick()};$("orm").onchange=()=>{S.auto=true;pick()};$("iv").onchange=load;
+$("fo").onclick=()=>{const o=orb(S.rows.slice(0,S.upto));if(o){S.auto=true;fill(o);draw()}};
+["en","st","t1","t2","t3","de"].forEach(i=>$(i).addEventListener("input",()=>{S.auto=false;calc();draw()}));
+["pr0","pr1","pr2","pr3","bu","rp","md","fx","fp"].forEach(i=>$(i).addEventListener("input",calc));
+$("bt").onclick=()=>{if(S.iv==="1d"){$("btout").innerHTML="<p class=mu>Der Backtest braucht 5- oder 15-Minuten-Kerzen.</p>";return}
+ const by={};S.all.forEach(r=>(by[dk(r.t)]=by[dk(r.t)]||[]).push(r));let sum=0,w=0,n=0,h="<table><tr><th>Tag</th><th>Richtung</th><th>Ergebnis</th></tr>";
+ Object.keys(by).forEach(d=>{const o=orb(by[d]),x=sim(by[d],o);if(x===null){h+=`<tr><td>${d}</td><td class=mu>kein Ausbruch</td><td></td></tr>`;return}n++;sum+=x;if(x>0)w++;h+=`<tr><td>${d}</td><td>${o.sig.dir==="long"?"Long":"Short"}</td><td class="${x>=0?"up":"dn"}">${x>0?"+":""}${f(x)} R</td></tr>`});
+ $("btout").innerHTML=h+`</table><p>Summe: <b class="${sum>=0?"up":"dn"}">${f(sum)} R</b> bei ${n} Trades, ${n?Math.round(w/n*100):0} % im Plus. Wenige Tage sind keine Statistik.</p>`};
+async function req(u){const go=()=>fetch(u,{headers:{"x-desk-key":localStorage.getItem("dk")||""}});let r=await go();
+ if(r.status===401){localStorage.setItem("dk",prompt("Desk-Schlüssel (DESK_KEY aus den Render-Einstellungen):")||"");r=await go()}
+ const d=await r.json();if(d.error)throw new Error(d.error);return d.text}
+const jp=t=>JSON.parse(t.replace(/^```(?:json)?\s*|\s*```$/g,"").trim());
+document.querySelectorAll("[data-ai]").forEach(b=>b.onclick=async()=>{const m=b.dataset.ai,o=$("aiout");$("aiv").innerHTML="";o.textContent="Analyst arbeitet … (bis zu einer Minute)";
+ try{const t=await req("/api/ai?mode="+m+"&s="+encodeURIComponent(S.sym));o.textContent=t;
+  if(m==="signal")try{const j=jp(t),c=/BUY/i.test(j.signal)?"up":/SELL/i.test(j.signal)?"dn":"";$("aiv").innerHTML=`<p><span class="sig ${c}">${E(j.signal)}</span> · Sicherheit ${E(j.confidence)}${typeof j.confidence==="number"?" %":""}</p>`;o.textContent=JSON.stringify(j,null,2)}catch(e){}}
+ catch(e){o.textContent="Fehler: "+e.message}});
+$("cgb").onclick=async()=>{const o=$("cg");o.innerHTML="<p class=mu>Suche …</p>";
+ try{const t=await req("/api/ai?mode=congress&s="+encodeURIComponent(S.sym));
+  try{const a=jp(t);if(!a.length){o.innerHTML="<p class=mu>Keine Trades gefunden.</p>";return}
+   o.innerHTML="<table><tr><th>Mitglied</th><th>Art</th><th>Betrag</th><th>Handel</th></tr>"+a.map(x=>`<tr><td>${E(x.member)} ${E(x.party||"")}</td><td>${E(x.side)}</td><td>${E(x.amount_range)}</td><td>${E(x.trade_date)}</td></tr>`).join("")+"</table>"}
+  catch(e){o.innerHTML="<pre>"+E(t)+"</pre>"}}catch(e){o.innerHTML="<p class=dn>Fehler: "+E(e.message)+"</p>"}};
+async function news(){const o=$("nw");o.textContent="Lädt …";try{const a=await J("/api/news?s="+encodeURIComponent(S.sym));
+ o.innerHTML=a.length?a.map(n=>`<p><a href="${E(n.url)}" target="_blank" rel="noopener noreferrer">${E(n.title)}</a> <span class="mu">${E(n.source)}</span></p>`).join(""):"Keine Meldungen."}catch(e){o.textContent="Nachrichten nicht erreichbar."}}
+const syms=()=>[...new Set([...WL,...AL.filter(a=>!a.done).map(a=>a.s),S.sym])];
+function ban(m){const b=$("bn");b.textContent=m;b.style.display="block";setTimeout(()=>b.style.display="none",9000);try{if(Notification.permission==="granted")new Notification("Trading-Desk",{body:m})}catch(e){}}
+function renderAl(){$("al").innerHTML=AL.map((a,i)=>`<div class="wr" style="grid-template-columns:1fr auto auto 14px"><b>${E(a.s)}</b><span>${a.d==="up"?"≥":"≤"} ${f(a.p)}</span><span class="mu">${a.done?"ausgelöst":"aktiv"}</span><i data-a="${i}">×</i></div>`).join("")||"<p class=mu>Keine Alarme.</p>"}
+function chk(d){AL.forEach(a=>{if(a.done)return;const x=d.find(y=>y.sym===a.s);if(x&&(a.d==="up"?x.price>=a.p:x.price<=a.p)){a.done=1;ban(a.s+" hat "+f(a.p)+" "+(a.d==="up"?"erreicht (darüber)":"erreicht (darunter)"))}});Sv("al",AL);renderAl()}
+$("aa").onclick=()=>{const s=$("as").value.trim().toUpperCase(),p=V("ap");if(!OKS.test(s)||!(p>0))return;AL.push({s,d:$("ad").value,p});try{if(Notification.permission==="default")Notification.requestPermission()}catch(e){}Sv("al",AL);renderAl();scan()};
+$("al").onclick=e=>{const i=e.target.dataset.a;if(i!=null){AL.splice(+i,1);Sv("al",AL);renderAl()}};
+function renderOr(){$("ord").innerHTML=OR.map((o,i)=>{const x=S.sc.find(y=>y.sym===o.s),r=x?(x.price-o.e)*(o.d==="long"?1:-1)*o.sh:NaN;return`<div class="wr" style="grid-template-columns:1fr auto auto 14px"><b>${E(o.s)} ${o.d==="long"?"Long":"Short"} ${o.sh}×</b><span>${f(o.e)}</span><span class="${r>=0?"up":"dn"}">${f(r)}</span><i data-o="${i}">×</i></div>`}).join("")||"<p class=mu>Keine Papier-Orders.</p>"}
+$("po").onclick=()=>{const p=pv();if(!S.sh||!(p.e>0))return;OR.push({s:S.sym,d:p.d,sh:S.sh,e:p.e});Sv("or",OR);renderOr()};
+$("ord").onclick=e=>{const i=e.target.dataset.o;if(i!=null){OR.splice(+i,1);Sv("or",OR);renderOr()}};
+async function scan(){try{const d=await J("/api/scan?s="+encodeURIComponent(syms().join(",")));S.sc=d;
+ $("wl").innerHTML=d.filter(x=>WL.includes(x.sym)).map(x=>`<div class="wr" data-s="${E(x.sym)}"><b>${E(x.sym)}</b><span>${f(x.price)}</span><span class="${x.chg>=0?"up":"dn"}">${x.chg>=0?"+":""}${f(x.chg)} %</span><span class="bd ${x.orb}">${x.orb==="up"?"ORB ↑":x.orb==="dn"?"ORB ↓":"ORB ·"}</span><i data-x="${E(x.sym)}">×</i></div>`).join("");chk(d);renderOr()}catch(e){$("wl").textContent="Scanner nicht erreichbar"}}
+$("wl").onclick=e=>{const x=e.target.dataset.x;if(x){WL=WL.filter(s=>s!==x);Sv("wl",WL);scan();return}const r=e.target.closest("[data-s]");if(r){$("sym").value=r.dataset.s;load()}};
+$("na").onclick=()=>{const s=$("ns").value.trim().toUpperCase();if(OKS.test(s)&&!WL.includes(s)){WL.push(s);Sv("wl",WL);$("ns").value="";scan()}};
+renderAl();renderOr();load();scan();setInterval(scan,60000);
+})();
+</script></body></html>
